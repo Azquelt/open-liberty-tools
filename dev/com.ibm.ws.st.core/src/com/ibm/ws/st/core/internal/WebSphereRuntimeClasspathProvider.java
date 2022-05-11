@@ -23,6 +23,7 @@ import java.util.Properties;
 import java.util.Set;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
+import java.util.stream.Collectors;
 
 import org.eclipse.core.resources.IProject;
 import org.eclipse.core.runtime.IPath;
@@ -63,12 +64,12 @@ public class WebSphereRuntimeClasspathProvider extends RuntimeClasspathProviderD
     /**
      * Finds jars at the specified <code>path</code> and adds them to the provided <code>list</code>.
      *
-     * @param path the file path to look for jars
+     * @param path                    the file path to look for jars
      * @param pc
      * @param list
      * @param searchAllSubdirectories when <code>true</code> searches all subdirectories, when <code>false</code>
-     *            checks directory names against predefined inclusion list.
-     * @param jarsToSkip a list of jars that we do not want to take into account when finding jars. Can be <code>null</code>
+     *                                    checks directory names against predefined inclusion list.
+     * @param jarsToSkip              a list of jars that we do not want to take into account when finding jars. Can be <code>null</code>
      */
     protected static void findJars(IPath path, ProjectPrefs prefs, List<IClasspathEntry> list, boolean searchAllSubdirectories, Set<String> jarsToSkip) {
         File dir = path.toFile();
@@ -242,6 +243,7 @@ public class WebSphereRuntimeClasspathProvider extends RuntimeClasspathProviderD
             try {
                 IClasspathEntry[] tmp = wrtp.getClasspathEntriesCache().getEntries();
                 if (tmp.length > 0) {
+                    logIfJaxbPresent("Returning cached classpath", tmp);
                     return tmp;
                 }
                 jarsToSkip = wrtp.getConflictedJars();
@@ -265,7 +267,14 @@ public class WebSphereRuntimeClasspathProvider extends RuntimeClasspathProviderD
         if (wrtp != null) {
             wrtp.getClasspathEntriesCache().setEntries(entries);
         }
+        logIfJaxbPresent("Returning computed classpath", entries);
         return entries;
+    }
+
+    private void logIfJaxbPresent(String message, IClasspathEntry[] entries) {
+        List<String> jaxbEntries = Arrays.stream(entries).filter(e -> e.getEntryKind() == IClasspathEntry.CPE_LIBRARY).map(e -> e.getPath()).map(p -> p.lastSegment()).filter(s -> s.contains("jaxb")
+                                                                                                                                                                                   || s.contains("xmlBinding")).collect(Collectors.toList());
+        System.out.println(message + " - jaxb entries: " + jaxbEntries);
     }
 
     /**
